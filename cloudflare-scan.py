@@ -9,7 +9,6 @@ import socket
 import ssl
 from datetime import datetime
 from typing import List, Optional, Dict
-import os
 
 from PySide6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton,
@@ -17,16 +16,18 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QGridLayout, QHeaderView,
     QTextEdit
 )
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QFont, QColor, QClipboard, QIcon
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
+from PySide6.QtGui import QFont, QColor, QIcon
+import os
+
+FONT_TITLE = QFont("Microsoft YaHei", 24, QFont.Bold)
+FONT_BTN = QFont("Microsoft YaHei", 11, QFont.Bold)
+FONT_STATUS = QFont("Consolas", 10)
+FONT_LABEL = QFont("Microsoft YaHei", 10)
 
 BTN_W = 120
 BTN_H = 38
 SPACING = 8
-
-FONT_BTN = QFont("Microsoft YaHei", 12)
-FONT_TITLE = QFont("Microsoft YaHei", 28)
-FONT_STATUS = QFont("Microsoft YaHei", 9)
 
 CF_IPV4_CIDRS = [
     "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
@@ -36,6 +37,42 @@ CF_IPV4_CIDRS = [
     "172.64.229.0/24", "172.64.230.0/23", "172.64.232.0/21", "172.64.240.0/21",
     "172.64.248.0/21", "172.65.0.0/16", "172.66.0.0/16", "172.67.0.0/16",
     "131.0.72.0/22"
+]
+
+CF_IPV6_CIDRS = [
+    "2400:cb00:2049::/48", "2400:cb00:f00e::/48", "2606:4700::/32",
+    "2606:4700:10::/48", "2606:4700:130::/48", "2606:4700:3000::/48",
+    "2606:4700:3001::/48", "2606:4700:3002::/48", "2606:4700:3003::/48",
+    "2606:4700:3004::/48", "2606:4700:3005::/48", "2606:4700:3006::/48",
+    "2606:4700:3007::/48", "2606:4700:3008::/48", "2606:4700:3009::/48",
+    "2606:4700:3010::/48", "2606:4700:3011::/48", "2606:4700:3012::/48",
+    "2606:4700:3013::/48", "2606:4700:3014::/48", "2606:4700:3015::/48",
+    "2606:4700:3016::/48", "2606:4700:3017::/48", "2606:4700:3018::/48",
+    "2606:4700:3019::/48", "2606:4700:3020::/48", "2606:4700:3021::/48",
+    "2606:4700:3022::/48", "2606:4700:3023::/48", "2606:4700:3024::/48",
+    "2606:4700:3025::/48", "2606:4700:3026::/48", "2606:4700:3027::/48",
+    "2606:4700:3028::/48", "2606:4700:3029::/48", "2606:4700:3030::/48",
+    "2606:4700:3031::/48", "2606:4700:3032::/48", "2606:4700:3033::/48",
+    "2606:4700:3034::/48", "2606:4700:3035::/48", "2606:4700:3036::/48",
+    "2606:4700:3037::/48", "2606:4700:3038::/48", "2606:4700:3039::/48",
+    "2606:4700:a0::/48", "2606:4700:a1::/48", "2606:4700:a8::/48",
+    "2606:4700:a9::/48", "2606:4700:a::/48", "2606:4700:b::/48",
+    "2606:4700:c::/48", "2606:4700:d0::/48", "2606:4700:d1::/48",
+    "2606:4700:d::/48", "2606:4700:e0::/48", "2606:4700:e1::/48",
+    "2606:4700:e2::/48", "2606:4700:e3::/48", "2606:4700:e4::/48",
+    "2606:4700:e5::/48", "2606:4700:e6::/48", "2606:4700:e7::/48",
+    "2606:4700:e::/48", "2606:4700:f1::/48", "2606:4700:f2::/48",
+    "2606:4700:f3::/48", "2606:4700:f4::/48", "2606:4700:f5::/48",
+    "2606:4700:f::/48", "2803:f800:50::/48", "2803:f800:51::/48",
+    "2a06:98c1:3100::/48", "2a06:98c1:3101::/48", "2a06:98c1:3102::/48",
+    "2a06:98c1:3103::/48", "2a06:98c1:3104::/48", "2a06:98c1:3105::/48",
+    "2a06:98c1:3106::/48", "2a06:98c1:3107::/48", "2a06:98c1:3108::/48",
+    "2a06:98c1:3109::/48", "2a06:98c1:310a::/48", "2a06:98c1:310b::/48",
+    "2a06:98c1:310c::/48", "2a06:98c1:310d::/48", "2a06:98c1:310e::/48",
+    "2a06:98c1:310f::/48", "2a06:98c1:3120::/48", "2a06:98c1:3121::/48",
+    "2a06:98c1:3122::/48", "2a06:98c1:3123::/48", "2a06:98c1:3200::/48",
+    "2a06:98c1:50::/48", "2a06:98c1:51::/48", "2a06:98c1:54::/48",
+    "2a06:98c1:58::/48"
 ]
 
 AIRPORT_CODES = {
@@ -78,11 +115,9 @@ AIRPORT_CODES = {
     "JNB": "约翰内斯堡", "CPT": "开普敦", "CAI": "开罗",
 }
 
-
-class AsyncScanner:
-    
+class IPv4Scanner:
     def __init__(self, log_callback=None, progress_callback=None, result_callback=None):
-        self.max_workers = 150
+        self.max_workers = 200
         self.timeout = 3
         self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         self.running = True
@@ -120,7 +155,7 @@ class AsyncScanner:
                 asyncio.open_connection(ip, 443),
                 timeout=self.timeout
             )
-            latency = (time.monotonic() - start_time) * 1000
+            latency = (time.monotonic() - start_time) * 500
             writer.close()
             await writer.wait_closed()
             return round(latency, 2)
@@ -182,7 +217,7 @@ class AsyncScanner:
         
         latency = await self.test_ip_latency(session, ip)
         
-        if latency is not None and latency < 5000:
+        if latency is not None and latency < 1000:
             if self.running:
                 try:
                     iata_code = await self.get_iata_code(session, ip)
@@ -195,6 +230,7 @@ class AsyncScanner:
                 'iata_code': iata_code,
                 'chinese_name': self.get_iata_translation(iata_code) if iata_code else "未知地区",
                 'success': True,
+                'ip_version': 4,
                 'scan_time': datetime.now().strftime("%H:%M:%S")
             }
         else:
@@ -248,11 +284,9 @@ class AsyncScanner:
                 if current_time - last_update_time >= update_interval or completed == total:
                     elapsed = current_time - start_time
                     ips_per_second = completed / elapsed if elapsed > 0 else 0
-                    remaining = total - completed
-                    eta = remaining / ips_per_second if ips_per_second > 0 else 0
                     
                     if self.progress_callback:
-                        self.progress_callback(completed, total, len(successful_results), ips_per_second, eta)
+                        self.progress_callback(completed, total, len(successful_results), ips_per_second)
                     
                     last_update_time = current_time
         
@@ -260,33 +294,259 @@ class AsyncScanner:
     
     async def run_scan_async(self):
         try:
+            if self.log_callback:
+                self.log_callback("正在从Cloudflare IPv4 IP段生成随机IP...")
             ip_list = self.generate_ips_from_cidrs()
             
             if not ip_list:
                 if self.log_callback:
-                    self.log_callback("错误: 未能生成IP列表")
+                    self.log_callback("错误: 未能生成IPv4 IP列表")
                 return None
             
             if self.log_callback:
-                self.log_callback(f"扫描阶段：开始测试 {len(ip_list)} 个IP的延迟和地区码...")
+                self.log_callback(f"已生成 {len(ip_list)} 个随机IPv4 IP")
+                self.log_callback(f"开始测试 {len(ip_list)} 个IPv4 IP的延迟和地区码...")
             
             results = await self.batch_test_ips(ip_list)
             
             if not self.running:
                 if self.log_callback:
-                    self.log_callback("扫描被用户中止")
+                    self.log_callback("IPv4扫描被用户中止")
                 return None
             
             return results
             
         except Exception as e:
             if self.log_callback:
-                self.log_callback(f"扫描过程中出现错误: {str(e)}")
+                self.log_callback(f"IPv4扫描过程中出现错误: {str(e)}")
             return None
     
     def stop(self):
         self.running = False
 
+class IPv6Scanner:
+    def __init__(self, log_callback=None, progress_callback=None, result_callback=None):
+        self.max_workers = 200
+        self.timeout = 3
+        self.running = True
+        self.log_callback = log_callback
+        self.progress_callback = progress_callback
+        self.result_callback = result_callback
+        
+    def generate_ips_from_cidrs(self) -> List[str]:
+        ip_list = []
+        
+        for cidr in CF_IPV6_CIDRS:
+            try:
+                network = ipaddress.ip_network(cidr, strict=False)
+                
+                if network.num_addresses > 2:
+                    sample_size = min(100, network.num_addresses - 2)
+                    try:
+                        for _ in range(sample_size):
+                            random_ip_int = random.randint(int(network.network_address) + 1, 
+                                                           int(network.broadcast_address) - 1)
+                            random_ip = str(ipaddress.IPv6Address(random_ip_int))
+                            ip_list.append(random_ip)
+                    except ValueError as e:
+                        if self.log_callback:
+                            self.log_callback(f"处理IPv6 CIDR {cidr} 时出错: {e}")
+                        continue
+                            
+            except ValueError as e:
+                if self.log_callback:
+                    self.log_callback(f"处理CIDR {cidr} 时出错: {e}")
+                continue
+        
+        return ip_list
+    
+    async def test_ip_latency(self, session: aiohttp.ClientSession, ip: str) -> Optional[float]:
+        if not self.running:
+            return None
+            
+        start_time = time.monotonic()
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(ip, 443),
+                timeout=self.timeout
+            )
+            latency = (time.monotonic() - start_time) * 1500
+            writer.close()
+            await writer.wait_closed()
+            return round(latency, 2)
+        except (asyncio.TimeoutError, ConnectionRefusedError, OSError, ConnectionError):
+            return None
+        except Exception:
+            return None
+    
+    async def get_iata_code(self, session: aiohttp.ClientSession, ip: str) -> Optional[str]:
+        if not self.running:
+            return None
+            
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Host": "speed.cloudflare.com"
+        }
+        
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        
+        targets = [
+            (f"http://[{ip}]/cdn-cgi/trace", False),
+            (f"https://[{ip}]/cdn-cgi/trace", ssl_ctx),
+        ]
+        
+        for url, ssl_mode in targets:
+            try:
+                async with session.get(
+                    url,
+                    headers=headers,
+                    ssl=ssl_mode,
+                    timeout=aiohttp.ClientTimeout(total=3),
+                    allow_redirects=False
+                ) as response:
+                    if response.status == 200:
+                        text = await response.text()
+                        
+                        for line in text.strip().split('\n'):
+                            if line.startswith('colo='):
+                                colo = line.split('=', 1)[1].strip()
+                                if colo and colo.upper() != 'UNKNOWN':
+                                    return colo.upper()
+            except Exception:
+                continue
+                
+        return None
+    
+    def get_iata_translation(self, iata_code: str) -> str:
+        if iata_code in AIRPORT_CODES:
+            return AIRPORT_CODES[iata_code]
+        return iata_code
+    
+    async def test_single_ip(self, session: aiohttp.ClientSession, ip: str):
+        if not self.running:
+            return None
+        
+        latency = await self.test_ip_latency(session, ip)
+        
+        if latency is not None and latency < 5000:
+            iata_code = None
+            if self.running:
+                try:
+                    iata_code = await self.get_iata_code(session, ip)
+                except Exception:
+                    pass
+            
+            return {
+                'ip': ip,
+                'latency': latency,
+                'iata_code': iata_code,
+                'chinese_name': self.get_iata_translation(iata_code) if iata_code else "未知地区",
+                'success': True,
+                'ip_version': 6,
+                'scan_time': datetime.now().strftime("%H:%M:%S")
+            }
+        else:
+            return None
+    
+    async def batch_test_ips(self, ip_list: List[str]):
+        semaphore = asyncio.Semaphore(self.max_workers)
+        
+        async def test_with_semaphore(session: aiohttp.ClientSession, ip: str):
+            async with semaphore:
+                return await self.test_single_ip(session, ip)
+        
+        connector = aiohttp.TCPConnector(
+            limit=self.max_workers,
+            force_close=True,
+            enable_cleanup_closed=True,
+            limit_per_host=0,
+            family=socket.AF_INET6
+        )
+        
+        successful_results = []
+        start_time = time.time()
+        
+        async with aiohttp.ClientSession(connector=connector) as session:
+            tasks = []
+            for ip in ip_list:
+                if not self.running:
+                    break
+                task = asyncio.create_task(test_with_semaphore(session, ip))
+                tasks.append(task)
+            
+            completed = 0
+            total = len(tasks)
+            
+            last_update_time = time.time()
+            update_interval = 0.5
+            
+            for future in asyncio.as_completed(tasks):
+                if not self.running:
+                    for task in tasks:
+                        if not task.done():
+                            task.cancel()
+                    break
+                
+                try:
+                    result = await future
+                    completed += 1
+                    
+                    if result:
+                        successful_results.append(result)
+                    
+                    current_time = time.time()
+                    if current_time - last_update_time >= update_interval or completed == total:
+                        elapsed = current_time - start_time
+                        ips_per_second = completed / elapsed if elapsed > 0 else 0
+                        
+                        if self.progress_callback:
+                            self.progress_callback(completed, total, len(successful_results), ips_per_second)
+                        
+                        last_update_time = current_time
+                except Exception:
+                    completed += 1
+        
+        return successful_results
+    
+    async def run_scan_async(self):
+        try:
+            if self.log_callback:
+                self.log_callback("正在从Cloudflare IPv6 IP段生成随机IP...")
+            ip_list = self.generate_ips_from_cidrs()
+            
+            if not ip_list:
+                if self.log_callback:
+                    self.log_callback("错误: 未能生成IPv6 IP列表")
+                return None
+            
+            if self.log_callback:
+                self.log_callback(f"已生成 {len(ip_list)} 个随机IPv6 IP")
+                self.log_callback(f"开始测试 {len(ip_list)} 个IPv6 IP的延迟和地区码...")
+                self.log_callback("注意: IPv6扫描可能需要更多时间，请耐心等待...")
+            
+            results = await self.batch_test_ips(ip_list)
+            
+            if not self.running:
+                if self.log_callback:
+                    self.log_callback("IPv6扫描被用户中止")
+                return None
+            
+            if results:
+                with_iata = sum(1 for r in results if r.get('iata_code'))
+                if self.log_callback:
+                    self.log_callback(f"IPv6扫描完成: 共{len(results)}个IP可用，其中{with_iata}个成功获取地区码")
+            
+            return results
+            
+        except Exception as e:
+            if self.log_callback:
+                self.log_callback(f"IPv6扫描过程中出现错误: {str(e)}")
+            return None
+    
+    def stop(self):
+        self.running = False
 
 class SpeedTestWorker(QThread):
     progress_update = Signal(int, int, float)
@@ -316,7 +576,15 @@ class SpeedTestWorker(QThread):
         ).encode()
 
         try:
-            sock = socket.create_connection((ip, 443), timeout=3)
+            if ':' in ip:
+                addrinfo = socket.getaddrinfo(ip, 443, socket.AF_INET6, socket.SOCK_STREAM)
+                family, socktype, proto, canonname, sockaddr = addrinfo[0]
+                sock = socket.socket(family, socktype, proto)
+                sock.settimeout(3)
+                sock.connect(sockaddr)
+            else:
+                sock = socket.create_connection((ip, 443), timeout=3)
+                
             ss = ctx.wrap_socket(sock, server_hostname=self.test_host)
             ss.sendall(req)
 
@@ -350,18 +618,31 @@ class SpeedTestWorker(QThread):
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
-            s = socket.create_connection((ip, 443), timeout=3)
+            
+            request = f"GET /cdn-cgi/trace HTTP/1.1\r\nHost: {self.test_host}\r\nUser-Agent: curl/7.68.0\r\n\r\n".encode()
+            
+            if ':' in ip:
+                addrinfo = socket.getaddrinfo(ip, 443, socket.AF_INET6, socket.SOCK_STREAM)
+                family, socktype, proto, canonname, sockaddr = addrinfo[0]
+                s = socket.socket(family, socktype, proto)
+                s.settimeout(3)
+                s.connect(sockaddr)
+            else:
+                s = socket.create_connection((ip, 443), timeout=3)
+            
             ss = ctx.wrap_socket(s, server_hostname=self.test_host)
-            ss.sendall(
-                f"GET /cdn-cgi/trace HTTP/1.1\r\nHost: {self.test_host}\r\n\r\n".encode()
-            )
+            ss.sendall(request)
             data = ss.recv(2048).decode(errors="ignore")
             ss.close()
+            
             for line in data.splitlines():
                 if line.startswith("colo="):
-                    return line.split("=")[1].strip()
+                    colo = line.split("=")[1].strip()
+                    if colo and colo.upper() != "UNKNOWN":
+                        return colo.upper()
         except:
             pass
+        
         return None
     
     def run(self):
@@ -373,9 +654,11 @@ class SpeedTestWorker(QThread):
             
             if self.region_code:
                 filtered_results = [r for r in self.results if r.get('iata_code') and r['iata_code'].upper() == self.region_code]
+                self.status_message.emit(f"开始地区测速：{self.region_code} ({AIRPORT_CODES.get(self.region_code, '未知地区')})")
                 self.status_message.emit(f"找到 {len(filtered_results)} 个 {self.region_code} 地区的IP")
             else:
                 filtered_results = self.results
+                self.status_message.emit("开始完全测速")
             
             if not filtered_results:
                 self.status_message.emit(f"没有找到可用的IP进行测速")
@@ -384,6 +667,9 @@ class SpeedTestWorker(QThread):
             
             filtered_results.sort(key=lambda x: x.get('latency', float('inf')))
             target_ips = filtered_results[:min(5, len(filtered_results))]
+            
+            test_type = "地区测速" if self.region_code else "完全测速"
+            self.status_message.emit(f"{test_type}：将对 {len(target_ips)} 个IP进行测速")
             
             speed_results = []
             
@@ -400,17 +686,16 @@ class SpeedTestWorker(QThread):
                 download_speed = self.download_speed(ip)
                 
                 colo = self.get_colo(ip)
-                if colo == "Unknown" or not colo:
-                    self.status_message.emit(f"IP {ip} 地区码未知，跳过")
-                    continue
+                if not colo or colo == "Unknown":
+                    colo = ip_info.get('iata_code', 'UNKNOWN')
                 
                 speed_result = {
                     'ip': ip,
                     'latency': latency,
                     'download_speed': download_speed,
-                    'iata_code': colo.upper(),
-                    'chinese_name': AIRPORT_CODES.get(colo.upper(), '未知地区'),
-                    'test_type': "地区测速" if self.region_code else "完全测速"
+                    'iata_code': colo.upper() if colo else 'UNKNOWN',
+                    'chinese_name': AIRPORT_CODES.get(colo.upper(), '未知地区') if colo else '未知地区',
+                    'test_type': test_type
                 }
                 
                 speed_results.append(speed_result)
@@ -426,7 +711,11 @@ class SpeedTestWorker(QThread):
             speed_results.sort(key=lambda x: x['download_speed'], reverse=True)
             
             if speed_results:
+                avg_speed = sum(r['download_speed'] for r in speed_results) / len(speed_results)
                 self.status_message.emit(f"测速完成！成功测速 {len(speed_results)}/{len(target_ips)} 个IP")
+                self.status_message.emit(f"平均下载速度: {avg_speed:.2f} MB/s")
+            else:
+                self.status_message.emit(f"所有IP测速失败")
             
             self.speed_test_completed.emit(speed_results)
             
@@ -437,9 +726,8 @@ class SpeedTestWorker(QThread):
     def stop(self):
         self.running = False
 
-
-class ScanWorker(QThread):
-    progress_update = Signal(int, int, int, float, float)
+class IPv4ScanWorker(QThread):
+    progress_update = Signal(int, int, int, float)
     status_message = Signal(str)
     scan_completed = Signal(list)
     
@@ -451,9 +739,9 @@ class ScanWorker(QThread):
         if sys.platform == 'win32':
             asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
         
-        self.scanner = AsyncScanner(
+        self.scanner = IPv4Scanner(
             log_callback=lambda msg: self.status_message.emit(msg),
-            progress_callback=lambda c, t, s, sp, e: self.progress_update.emit(c, t, s, sp, e),
+            progress_callback=lambda c, t, s, sp: self.progress_update.emit(c, t, s, sp),
             result_callback=None
         )
         
@@ -471,47 +759,65 @@ class ScanWorker(QThread):
         if self.scanner:
             self.scanner.stop()
 
+class IPv6ScanWorker(QThread):
+    progress_update = Signal(int, int, int, float)
+    status_message = Signal(str)
+    scan_completed = Signal(list)
+    
+    def __init__(self):
+        super().__init__()
+        self.scanner = None
+        
+    def run(self):
+        if sys.platform == 'win32':
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        
+        self.scanner = IPv6Scanner(
+            log_callback=lambda msg: self.status_message.emit(msg),
+            progress_callback=lambda c, t, s, sp: self.progress_update.emit(c, t, s, sp),
+            result_callback=None
+        )
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            results = loop.run_until_complete(self.scanner.run_scan_async())
+            if results is not None:
+                self.scan_completed.emit(results)
+        finally:
+            loop.close()
+    
+    def stop(self):
+        if self.scanner:
+            self.scanner.stop()
 
 class CloudflareScanUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("CloudFlare Scan -- 小琳解说")
+        self.setWindowTitle("CloudFlare Scan")
         
-        self.resize(430, 700)
-        self.setMinimumSize(400, 600)
+        self.resize(430, 800)
+        self.setMinimumSize(410, 600)
         
-        self.setStyleSheet("background:#F9FAFB;")
+        self.setStyleSheet("""
+            QWidget {
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+                background: #F9FAFB;
+            }
+            QLabel {
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+            }
+        """)
         
-        self.set_window_icon()
-        
-        self.scan_worker = None
+        self.ipv4_scan_worker = None
+        self.ipv6_scan_worker = None
         self.speed_test_worker = None
         self.scanning = False
         self.speed_testing = False
         self.scan_results = []
         
         self.init_ui()
-    
-    def set_window_icon(self):
-        icon_paths = [
-            "cfs.ico",
-            os.path.join(os.path.dirname(__file__), "cfs.ico"),
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "cfs.ico"),
-        ]
-        
-        for icon_path in icon_paths:
-            if os.path.exists(icon_path):
-                try:
-                    self.setWindowIcon(QIcon(icon_path))
-                    return
-                except Exception:
-                    continue
-        
-        try:
-            icon_path = os.path.join(sys._MEIPASS, "cfs.ico") if hasattr(sys, '_MEIPASS') else "cfs.ico"
-            self.setWindowIcon(QIcon(icon_path))
-        except Exception:
-            pass
     
     def make_btn(self, text, color, text_color="white", enabled=True):
         btn = QPushButton(text)
@@ -521,16 +827,17 @@ class CloudflareScanUI(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(f"""
             QPushButton {{
-                background:{color};
-                color:{text_color};
-                border-radius:6px;
+                background: {color};
+                color: {text_color};
+                border-radius: 6px;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
             }}
             QPushButton:disabled {{
-                background:#E5E7EB;
-                color:#6B7280;
+                background: #E5E7EB;
+                color: #6B7280;
             }}
             QPushButton:hover {{
-                opacity:0.9;
+                opacity: 0.9;
             }}
         """)
         return btn
@@ -543,32 +850,18 @@ class CloudflareScanUI(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(f"""
             QPushButton {{
-                background:#EF4444;
-                color:white;
-                border-radius:6px;
+                background: #EF4444;
+                color: white;
+                border-radius: 6px;
+                font-weight: bold;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
             }}
             QPushButton:disabled {{
-                background:#E5E7EB;
-                color:#6B7280;
+                background: #E5E7EB;
+                color: #6B7280;
             }}
             QPushButton:hover {{
-                background:#DC2626;
-            }}
-        """)
-        return btn
-    
-    def make_label_btn(self, text):
-        btn = QPushButton(text)
-        btn.setFixedSize(BTN_W, BTN_H)
-        btn.setFont(FONT_BTN)
-        btn.setEnabled(False)
-        btn.setCursor(Qt.ArrowCursor)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background:#8B5CF6;
-                color:white;
-                border-radius:6px;
-                border:1px solid #7C3AED;
+                background: #DC2626;
             }}
         """)
         return btn
@@ -579,9 +872,10 @@ class CloudflareScanUI(QWidget):
         main.setSpacing(14)
 
         title = QLabel(
-            '<span style="color:#ff7a18; font-size: 32px; font-weight: bold;">CloudFlare</span> '
-            '<span style="color:#000000; font-size: 32px; font-weight: bold;"> Scan</span>'
+            '<span style="color: #ff7a18; font-weight: 900;">CloudFlare</span> '
+            '<span style="color: #111827; font-weight: 900;">Scan</span>'
         )
+        title.setFont(FONT_TITLE)
         title.setAlignment(Qt.AlignCenter)
         main.addWidget(title)
 
@@ -591,34 +885,33 @@ class CloudflareScanUI(QWidget):
         row1 = QHBoxLayout()
         row1.setSpacing(SPACING)
 
-        self.btn_ipv4 = self.make_btn("开始扫描", "#3B82F6")
+        self.btn_ipv4 = self.make_btn("IPv4 扫描", "#3B82F6")
         self.btn_ipv4.clicked.connect(self.start_ipv4_scan)
         
-        self.btn_region = self.make_label_btn("输入地区码")
-
+        self.btn_ipv6 = self.make_btn("IPv6 扫描", "#22C55E", enabled=True)
+        self.btn_ipv6.clicked.connect(self.start_ipv6_scan)
+        
         self.input_region = QLineEdit()
         self.input_region.setFixedSize(BTN_W, BTN_H)
         self.input_region.setFont(FONT_BTN)
-        self.input_region.setPlaceholderText("如：SJC, SIN")
+        self.input_region.setPlaceholderText("输入地区码")
         self.input_region.setStyleSheet("""
             QLineEdit {
-                background:white;
-                border:1px solid #D1D5DB;
-                border-radius:6px;
-                padding-left:8px;
-                color:#111827;
+                background: white;
+                border: 1px solid #D1D5DB;
+                border-radius: 6px;
+                padding-left: 8px;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
             }
             QLineEdit:focus {
-                border-color:#8B5CF6;
-            }
-            QLineEdit::placeholder {
-                color:#9CA3AF;
+                border-color: #F97316;
             }
         """)
-        self.input_region.textChanged.connect(self.region_text_changed)
+        self.input_region.textChanged.connect(self.auto_uppercase)
 
-        for w in (self.btn_ipv4, self.btn_region, self.input_region):
-            row1.addWidget(w)
+        row1.addWidget(self.btn_ipv4)
+        row1.addWidget(self.btn_ipv6)
+        row1.addWidget(self.input_region)
 
         row2 = QHBoxLayout()
         row2.setSpacing(SPACING)
@@ -646,12 +939,12 @@ class CloudflareScanUI(QWidget):
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                background:#E5E7EB;
-                border-radius:5px;
+                background: #E5E7EB;
+                border-radius: 5px;
             }
             QProgressBar::chunk {
-                background:#22C55E;
-                border-radius:5px;
+                background: #22C55E;
+                border-radius: 5px;
             }
         """)
         main.addWidget(self.progress_bar)
@@ -659,27 +952,35 @@ class CloudflareScanUI(QWidget):
         status_frame = QHBoxLayout()
         
         self.status_label = QLabel("就绪")
-        self.status_label.setFont(QFont("Microsoft YaHei", 10))
-        self.status_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
+        self.status_label.setStyleSheet("""
+            color: #6B7280; 
+            font-size: 12px; 
+            padding: 5px;
+            font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+        """)
         
         self.speed_label = QLabel("速度: 0 IP/秒")
-        self.speed_label.setFont(QFont("Microsoft YaHei", 10))
-        self.speed_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        
-        self.eta_label = QLabel("剩余时间: --")
-        self.eta_label.setFont(QFont("Microsoft YaHei", 10))
-        self.eta_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
+        self.speed_label.setStyleSheet("""
+            color: #6B7280; 
+            font-size: 12px; 
+            padding: 5px;
+            font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+        """)
         
         status_frame.addWidget(self.status_label)
         status_frame.addStretch()
         status_frame.addWidget(self.speed_label)
-        status_frame.addWidget(self.eta_label)
         
         main.addLayout(status_frame)
 
         status_display_label = QLabel("扫描状态和统计信息")
-        status_display_label.setFont(QFont("Microsoft YaHei", 12))
-        status_display_label.setStyleSheet("color:#1E3A8A;")
+        status_display_label.setFont(FONT_LABEL)
+        status_display_label.setStyleSheet("""
+            color: #111827; 
+            font-size: 14px; 
+            font-weight: bold;
+            font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+        """)
         main.addWidget(status_display_label)
 
         self.status_display = QTextEdit()
@@ -688,30 +989,48 @@ class CloudflareScanUI(QWidget):
         self.status_display.setReadOnly(True)
         self.status_display.setStyleSheet("""
             QTextEdit {
-                background:#0B3C5D;
-                border:1px solid #0F4C75;
-                border-radius:6px;
-                padding:10px;
-                color:#ECF0F1;
-                font-size: 9pt;
+                background: #0B3C5D;
+                border: 1px solid #0F4C75;
+                border-radius: 6px;
+                padding: 10px;
+                color: #ECF0F1;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+            }
+            QScrollBar:vertical {
+                background: #0F4C75;
+                width: 8px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #1E90FF;
+                min-height: 20px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #00BFFF;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
         main.addWidget(self.status_display)
 
         speed_results_label = QLabel("测速结果")
-        speed_results_label.setFont(QFont("Microsoft YaHei", 12))
-        speed_results_label.setStyleSheet("color:#1E3A8A;")
+        speed_results_label.setFont(FONT_LABEL)
+        speed_results_label.setStyleSheet("""
+            color: #111827; 
+            font-size: 14px; 
+            font-weight: bold;
+            font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
+        """)
         main.addWidget(speed_results_label)
 
         self.speed_table = QTableWidget()
         self.speed_table.setColumnCount(6)
         self.speed_table.setHorizontalHeaderLabels(["排名", "IP地址", "地区码", "延迟", "下载速度", "测速类型"])
-        
-        header_font = QFont("Microsoft YaHei", 9)
-        self.speed_table.horizontalHeader().setFont(header_font)
-        
-        table_font = QFont("Microsoft YaHei", 9)
-        self.speed_table.setFont(table_font)
         
         self.speed_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.speed_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -723,52 +1042,55 @@ class CloudflareScanUI(QWidget):
         self.speed_table.verticalHeader().setVisible(False)
         
         self.speed_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.speed_table.doubleClicked.connect(self.copy_table_cell)
         
         self.speed_table.setStyleSheet("""
             QTableWidget {
-                background:#0B3C5D;
-                border-radius:8px;
-                color:white;
-                gridline-color:#1E4D6B;
-                font-size: 9pt;
+                background: #0B3C5D;
+                border-radius: 8px;
+                color: white;
+                gridline-color: #1E4D6B;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
             }
             QHeaderView::section {
-                background:#0F4C75;
-                color:white;
-                border:none;
-                height:28px;
-                padding-left:10px;
-                font-size: 9pt;
+                background: #0F4C75;
+                color: white;
+                border: none;
+                height: 32px;
+                font-weight: bold;
+                padding-left: 10px;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
             }
             QTableWidget::item {
-                padding:4px;
-                border-bottom:1px solid #1E4D6B;
-                font-size: 9pt;
+                padding: 5px;
+                border-bottom: 1px solid #1E4D6B;
+                font-family: "Microsoft YaHei", "Microsoft JhengHei", sans-serif;
             }
-            QTableWidget::item:selected {
-                background:#1E4D6B;
+            QScrollBar:vertical {
+                background: #0F4C75;
+                width: 8px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical {
+                background: #1E90FF;
+                min-height: 20px;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #00BFFF;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
-        
-        self.speed_table.cellDoubleClicked.connect(self.copy_table_cell)
-        
         main.addWidget(self.speed_table, 1)
     
-    def region_text_changed(self, text):
-        cursor_pos = self.input_region.cursorPosition()
-        
-        upper_text = text.upper()
-        
-        if text != upper_text:
-            self.input_region.setText(upper_text)
-            self.input_region.setCursorPosition(cursor_pos)
-    
-    def copy_table_cell(self, row, column):
-        item = self.speed_table.item(row, column)
-        if item:
-            clipboard = QApplication.clipboard()
-            clipboard.setText(item.text())
-            self.status_display.append(f"已复制: {item.text()}")
+    def auto_uppercase(self, text):
+        if text != text.upper():
+            self.input_region.setText(text.upper())
     
     def start_ipv4_scan(self):
         if self.scanning or self.speed_testing:
@@ -780,23 +1102,61 @@ class CloudflareScanUI(QWidget):
         self.scan_results = []
         self.speed_table.setRowCount(0)
         self.status_display.clear()
-        self.status_display.append("=" * 30)
+        self.status_display.append("正在开始IPv4扫描...")
+        self.status_display.append("=" * 25)
         
         self.progress_bar.setValue(0)
-        self.status_label.setText("扫描中...")
-        self.status_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        self.speed_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        self.eta_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
+        self.status_label.setText("IPv4扫描中...")
         self.speed_label.setText("速度: 0 IP/秒")
-        self.eta_label.setText("剩余时间: --")
         
-        self.scan_worker = ScanWorker()
-        self.scan_worker.progress_update.connect(self.update_progress)
-        self.scan_worker.status_message.connect(self.update_status_message)
-        self.scan_worker.scan_completed.connect(self.scan_finished)
-        self.scan_worker.finished.connect(lambda: self.worker_finished("scan"))
+        self.ipv4_scan_worker = IPv4ScanWorker()
+        self.ipv4_scan_worker.progress_update.connect(self.update_progress)
+        self.ipv4_scan_worker.status_message.connect(self.update_status_message)
+        self.ipv4_scan_worker.scan_completed.connect(self.scan_finished)
+        self.ipv4_scan_worker.finished.connect(lambda: self.worker_finished("scan"))
         
-        self.scan_worker.start()
+        self.ipv4_scan_worker.start()
+    
+    def start_ipv6_scan(self):
+        if self.scanning or self.speed_testing:
+            return
+        
+        self.scanning = True
+        self.update_ui_state(task_started=True)
+        
+        self.scan_results = []
+        self.speed_table.setRowCount(0)
+        self.status_display.clear()
+        self.status_display.append("正在开始IPv6扫描...")
+        self.status_display.append("=" * 25)
+        
+        self.progress_bar.setValue(0)
+        self.status_label.setText("IPv6扫描中...")
+        self.speed_label.setText("速度: 0 IP/秒")
+        
+        self.ipv6_scan_worker = IPv6ScanWorker()
+        self.ipv6_scan_worker.progress_update.connect(self.update_progress)
+        self.ipv6_scan_worker.status_message.connect(self.update_status_message)
+        self.ipv6_scan_worker.scan_completed.connect(self.scan_finished)
+        self.ipv6_scan_worker.finished.connect(lambda: self.worker_finished("scan"))
+        
+        self.ipv6_scan_worker.start()
+    
+    def copy_table_cell(self, index):
+        item = self.speed_table.item(index.row(), index.column())
+        if item:
+            text = item.text()
+            clipboard = QApplication.clipboard()
+            clipboard.setText(text)
+            
+            if len(text) > 30:
+                display_text = text[:27] + "..."
+            else:
+                display_text = text
+            
+            self.status_label.setText(f"已复制: {display_text}")
+            
+            QTimer.singleShot(2000, lambda: self.status_label.setText("就绪"))
     
     def start_full_speed_test(self):
         if self.speed_testing or self.scanning:
@@ -810,16 +1170,11 @@ class CloudflareScanUI(QWidget):
         self.update_ui_state(task_started=True)
         
         self.speed_table.setRowCount(0)
-        self.status_display.append("=" * 30)
-        self.status_display.append("开始完全测速...")
+        self.status_display.append("")
         
         self.progress_bar.setValue(0)
         self.status_label.setText("完全测速中...")
-        self.status_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        self.speed_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        self.eta_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
         self.speed_label.setText("测速进度: 0/5")
-        self.eta_label.setText("预计时间: 约15秒")
         
         self.speed_test_worker = SpeedTestWorker(self.scan_results)
         self.speed_test_worker.progress_update.connect(self.update_speed_test_progress)
@@ -849,16 +1204,12 @@ class CloudflareScanUI(QWidget):
         self.update_ui_state(task_started=True)
         
         self.speed_table.setRowCount(0)
-        self.status_display.append("=" * 30)
+        self.status_display.append("")
         self.status_display.append(f"开始地区测速: {region_code} ({AIRPORT_CODES.get(region_code, '未知地区')})")
         
         self.progress_bar.setValue(0)
         self.status_label.setText(f"{region_code}地区测速中...")
-        self.status_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        self.speed_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-        self.eta_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
         self.speed_label.setText("测速进度: 0/5")
-        self.eta_label.setText("预计时间: 约15秒")
         
         self.speed_test_worker = SpeedTestWorker(self.scan_results, region_code)
         self.speed_test_worker.progress_update.connect(self.update_speed_test_progress)
@@ -869,10 +1220,15 @@ class CloudflareScanUI(QWidget):
         self.speed_test_worker.start()
     
     def stop_all_tasks(self):
-        if self.scan_worker and self.scanning:
-            self.scan_worker.stop()
-            self.status_label.setText("正在停止扫描...")
-            self.status_display.append("用户请求停止扫描...")
+        if self.ipv4_scan_worker and self.scanning:
+            self.ipv4_scan_worker.stop()
+            self.status_label.setText("正在停止IPv4扫描...")
+            self.status_display.append("用户请求停止IPv4扫描...")
+        
+        if self.ipv6_scan_worker and self.scanning:
+            self.ipv6_scan_worker.stop()
+            self.status_label.setText("正在停止IPv6扫描...")
+            self.status_display.append("用户请求停止IPv6扫描...")
         
         if self.speed_test_worker and self.speed_testing:
             self.speed_test_worker.stop()
@@ -902,41 +1258,32 @@ class CloudflareScanUI(QWidget):
             self.status_label.setText("测速完成")
         
         if not self.scanning and not self.speed_testing:
-            self.status_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-            self.speed_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
-            self.eta_label.setStyleSheet("color:#1E3A8A; padding: 5px;")
             self.update_ui_state(task_started=False)
     
     def update_ui_state(self, task_started=False):
         if task_started:
             self.btn_stop.setEnabled(True)
             self.btn_ipv4.setEnabled(False)
+            self.btn_ipv6.setEnabled(False)
             self.btn_full.setEnabled(False)
             self.btn_area.setEnabled(False)
         else:
             self.btn_stop.setEnabled(False)
             self.btn_ipv4.setEnabled(True)
+            self.btn_ipv6.setEnabled(True)
             if self.scan_results:
                 self.btn_full.setEnabled(True)
                 self.btn_area.setEnabled(True)
             
             self.progress_bar.setValue(0)
     
-    def update_progress(self, current, total, success_count, speed, eta):
+    def update_progress(self, current, total, success_count, speed):
         if total > 0:
             progress = int((current / total) * 100)
             self.progress_bar.setValue(progress)
         
-        self.status_label.setText(f"扫描中: {success_count}个IP可用")
+        self.status_label.setText(f"扫描中: {current}/{total} ({success_count}个可用)")
         self.speed_label.setText(f"速度: {speed:.1f} IP/秒")
-        
-        if eta < 60:
-            eta_text = f"{eta:.0f}秒"
-        elif eta < 3600:
-            eta_text = f"{eta/60:.1f}分钟"
-        else:
-            eta_text = f"{eta/3600:.1f}小时"
-        self.eta_label.setText(f"剩余时间: {eta_text}")
     
     def update_speed_test_progress(self, current, total, speed):
         if total > 0:
@@ -947,7 +1294,7 @@ class CloudflareScanUI(QWidget):
         self.speed_label.setText(f"测速进度: {current}/{total}")
         
         if speed > 0:
-            self.eta_label.setText(f"下载速度: {speed} MB/s")
+            self.status_label.setText(f"测速中: {current}/{total} ({speed} MB/s)")
     
     def update_status_message(self, message):
         self.status_display.append(message)
@@ -961,24 +1308,43 @@ class CloudflareScanUI(QWidget):
             self.status_display.append("扫描完成！未找到任何可用IP地址。")
             return
         
+        total_ips = len(results)
+        
+        ipv4_count = sum(1 for r in results if ':' not in r['ip'])
+        ipv6_count = sum(1 for r in results if ':' in r['ip'])
+        
+        latencies = [r['latency'] for r in results]
+        avg_latency = sum(latencies) / len(latencies) if latencies else 0
+        min_latency = min(latencies) if latencies else 0
+        max_latency = max(latencies) if latencies else 0
+        
         iata_stats = {}
         for result in results:
             iata_code = result.get('iata_code', '未知')
-            if iata_code:
+            if iata_code and iata_code != "UNKNOWN":
                 key = f"{iata_code} ({result['chinese_name']})"
                 iata_stats[key] = iata_stats.get(key, 0) + 1
         
         self.status_display.append("")
-        self.status_display.append("扫描完成！！！")
-        self.status_display.append(f"可用IP数: {len(results)}")
-        self.status_display.append("")
+        self.status_display.append("=" * 25)
+        self.status_display.append("扫描完成！统计信息：")
+        self.status_display.append(f"总测试IP数: {total_ips}")
+        self.status_display.append(f"可用IP数量: {len(results)}")
+        
+        if ipv4_count > 0:
+            self.status_display.append(f"IPv4地址: {ipv4_count} 个")
+        if ipv6_count > 0:
+            self.status_display.append(f"IPv6地址: {ipv6_count} 个")
         
         if iata_stats:
-            self.status_display.append(f"地区统计（共 {len(iata_stats)} 个不同地区）:")
+            self.status_display.append(f"地区统计（共 {len(iata_stats)} 个不同地区）：")
             sorted_iata = sorted(iata_stats.items(), key=lambda x: x[1], reverse=True)
             
             for iata, count in sorted_iata:
                 self.status_display.append(f"  {iata}: {count}个IP")
+        else:
+            self.status_display.append("提示：本次扫描未获取到具体的地区码信息（可能都是UNKNOWN）。")
+            self.status_display.append("这可能是暂时的网络波动，或者是这些IP没有返回地区信息。")
         
         self.status_display.append("")
         self.status_display.append("现在可以使用完全测速或地区测速功能。")
@@ -1039,36 +1405,54 @@ class CloudflareScanUI(QWidget):
             self.speed_table.setItem(row, 4, speed_item)
             self.speed_table.setItem(row, 5, type_item)
         
+        if results:
+            avg_speed = sum(r['download_speed'] for r in results) / len(results)
+            avg_latency = sum(r['latency'] for r in results) / len(results)
+            
+            self.status_display.append("")
+            self.status_display.append("测速完成！！")
+            self.status_display.append(f"成功测速 {len(results)} 个IP")
+            self.status_display.append(f"平均下载速度: {avg_speed:.2f} MB/s")
+            self.status_display.append(f"平均延迟: {avg_latency:.2f} ms")
+        
         self.speed_table.scrollToBottom()
 
+def find_icon_file():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    icon_path = os.path.join(current_dir, "cfs.ico")
+    
+    if os.path.exists(icon_path):
+        return icon_path
+    
+    if hasattr(sys, '_MEIPASS'):
+        base_dir = sys._MEIPASS
+        icon_path = os.path.join(base_dir, "cfs.ico")
+        if os.path.exists(icon_path):
+            return icon_path
+    
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+        icon_path = os.path.join(base_dir, "cfs.ico")
+        if os.path.exists(icon_path):
+            return icon_path
+    
+    return None
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setFont(QFont("Microsoft YaHei"))
     
-    icon_paths = [
-        "cfs.ico",
-        os.path.join(os.path.dirname(__file__), "cfs.ico"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "cfs.ico"),
-    ]
-    
-    app_icon_set = False
-    for icon_path in icon_paths:
-        if os.path.exists(icon_path):
-            try:
-                app.setWindowIcon(QIcon(icon_path))
-                app_icon_set = True
-                break
-            except Exception:
-                continue
-    
-    if not app_icon_set:
-        try:
-            icon_path = os.path.join(sys._MEIPASS, "cfs.ico") if hasattr(sys, '_MEIPASS') else "cfs.ico"
-            app.setWindowIcon(QIcon(icon_path))
-        except Exception:
-            pass
+    icon_path = find_icon_file()
+    if icon_path and os.path.exists(icon_path):
+        app_icon = QIcon(icon_path)
+        app.setWindowIcon(app_icon)
+        print(f"图标文件路径: {icon_path}")
+    else:
+        print("警告: 未找到图标文件 cfs.ico")
     
     win = CloudflareScanUI()
+    
+    if icon_path and os.path.exists(icon_path):
+        win.setWindowIcon(app_icon)
+    
     win.show()
     sys.exit(app.exec())
