@@ -3,7 +3,7 @@ CloudFlare 扫描器 （简称CFS)  适配 Win  macOS
 
 ⚠️提示：本工具仅供学习和合法网络测速，请遵守当地法律法规，造成的一切后果自负。
 
-<img width="692" height="573" alt="f261513fd8ecf2" src="https://github.com/user-attachments/assets/5b64dee6-6911-4c29-8f57-b86a581a4586" />
+<img width="592" height="473" alt="f261513fd8ecf2" src="https://github.com/user-attachments/assets/5b64dee6-6911-4c29-8f57-b86a581a4586" />
 
 
 软件演示视频：https://www.youtube.com/watch?v=x9NTDJqV2uk
